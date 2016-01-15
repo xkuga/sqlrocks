@@ -257,7 +257,7 @@ class Sql:
         """
         parse expression
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|list|tuple|str expr: expression
         :return: expression string
         """
         if isinstance(expr, Sql):
@@ -330,6 +330,7 @@ class Sql:
             elif isinstance(val, str):
                 cond_str_list.append(val)
             else:
+                # list or tuple
                 cond_str, cond_arg = Sql.parse_cond(val)
                 cond_str_list.append(cond_str)
 
