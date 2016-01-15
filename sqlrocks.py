@@ -307,7 +307,7 @@ class Sql:
                     return '%s %s (%s)' % (v[0], v[1], placeholder), v[2]
             else:
                 if isinstance(v[2], Sql):
-                    return '%s %s %s' % (v[0], v[1], v[2].sql), v[2]
+                    return '%s %s %s' % (v[0], v[1], v[2].sql), v[2].args
                 else:
                     return '%s %s %s' % (v[0], v[1], '%s'), v[2]
 
