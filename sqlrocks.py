@@ -2,14 +2,16 @@
 
 
 class Sql:
-    def __init__(self):
+    def __init__(self, sql='', args=None):
         """
-        Init sql instance
+        Init Sql instance
 
+        :param str sql: sql string
+        :param list args: sql arguments
         :return: Sql instance
         """
-        self.sql = ''
-        self.args = []
+        self.sql = sql
+        self.args = args if args else []
 
     @staticmethod
     def rocks():
