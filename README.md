@@ -76,6 +76,17 @@ where = [['name', '=', 'Mayday'], ['tag', '=', 'band']] # ok~
 where = (('name', '=', 'Mayday'), ('tag', '=', 'band')) # wrong!
 ```
 
+Tests
+-----
+
+Install requirements.
+
+    pip install -r requirements.txt
+    
+Running test
+
+    python test_sqlrocks.py
+
 LICENSE
 -------
 
