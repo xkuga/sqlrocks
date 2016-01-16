@@ -133,13 +133,15 @@ class Sql:
 
         return self
 
-    def having(self, cond):
+    def having(self, *args, **kwargs):
         """
         Having clause
 
         :param dict|list|tuple|str cond: where conditions
         :return: Sql instance
         """
+        cond = args[0] if args else kwargs.items()
+
         cond_str, cond_args = Sql.parse_where_cond(cond)
 
         if cond_str:
