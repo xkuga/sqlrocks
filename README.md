@@ -1,7 +1,7 @@
 sqlrocks
 ========
 
-A rockable SQL builder.
+A rockable SQL builder with a lightweight ORM.
 
 Rock Start
 ----------
