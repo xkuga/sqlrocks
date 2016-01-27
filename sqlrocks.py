@@ -2,30 +2,25 @@
 
 
 class Sql:
-    def __init__(self, sql='', args=None):
+    def __init__(self, sql='', args=None, db=None):
         """
         Init Sql instance
 
         :param str sql: sql string
         :param list args: sql arguments
+        :param Db db: Db instance
         :return: Sql instance
         """
         self.sql = sql
         self.args = args if args else []
+        self.db = db
 
-    @staticmethod
-    def rocks():
+    def rocks(self):
         """
-        MAYDAY ROCKS
+        MAYDAY ROCKS \m/
         """
-        print('\m/')
-
-    @staticmethod
-    def rockable():
-        """
-        TRUST ME
-        """
-        return True
+        self.db.rocks(self.sql, self.args)
+        return self.db.cur
 
     def select(self, expr='*'):
         """
@@ -376,3 +371,384 @@ class Sql:
 
     def __repr__(self):
         return self.sql
+
+
+class Db:
+    def __init__(self, conn, cur, debug=False):
+        """
+        Init Db instance
+
+        :param conn: MySQLdb conn
+        :param cur: MySQLdb cursor
+        :param bool debug: default False
+        :return: Db instance
+        """
+        self.conn = conn
+        self.cur = cur
+        self.debug = debug
+
+    def sql(self):
+        """
+        Create a Sql instance
+
+        :return: Sql instance
+        """
+        return Sql(db=self)
+
+    def select(self, expr='*'):
+        """
+        Create a Sql instance
+
+        :param list|tuple|str expr: expression
+        :return: Sql instance
+        """
+        return self.sql().select(expr)
+
+    def count(self, table, where=None):
+        """
+        Count table
+
+        :param str table: table name
+        :param dict|list where: where conditions
+        :return: int
+        """
+        sql = self.select('COUNT(*)').fr('`%s`' % table)
+        result = sql.where(where).rocks().fetchone()
+        return result['COUNT(*)'] if isinstance(result, dict) else result[0]
+
+    def insert(self, table, data):
+        """
+        Insert clause
+
+        :param str table: table name
+        :param dict data: data
+        :return: last row id
+        """
+        return self.sql().insert(table).set(data).rocks().lastrowid
+
+    def update(self, table, data, where=None, order_by=None, limit=None):
+        """
+        Update clause
+
+        :param str table: table name
+        :param dict data: data
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param list|tuple|int|str limit: limit
+        :return: affected rows
+        """
+        sql = self.sql().update(table).set(data).where(where)
+        return sql.order_by(order_by).limit(limit).rocks().rowcount
+
+    def save(self, table, data, pk, insert=None):
+        """
+        Save data
+
+        :param str table: table name
+        :param dict data: data
+        :param str pk: primary key
+        :param bool insert: insert
+        :return: last row id or affected rows
+        """
+        if insert or pk not in data:
+            return self.insert(table, data)
+        else:
+            where = (pk, data[pk])
+            del data[pk]
+            return self.update(table, data, where)
+
+    def delete(self, table, where=None, order_by=None, limit=None):
+        """
+        Delete clause
+
+        :param str table: table name
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param list|tuple|int|str limit: limit
+        :return: affected rows
+        """
+        sql = self.sql().delete().fr('`%s`' % table).where(where)
+        return sql.order_by(order_by).limit(limit).rocks().rowcount
+
+    def rocks(self, sql, args=None):
+        """
+        Execute sql
+
+        :param str sql: sql
+        :param Iterable args: args
+        :return:
+        """
+        if self.debug:
+            print('%s\n%s' % (sql, args))
+        return self.cur.execute(sql, args)
+
+    def commit(self, *args, **kwargs):
+        """
+        Commit
+
+        :param args:
+        :param kwargs:
+        """
+        self.conn.commit(*args, **kwargs)
+
+    def rollback(self, *args, **kwargs):
+        """
+        Rollback
+
+        :param args:
+        :param kwargs:
+        """
+        self.conn.rollback(*args, **kwargs)
+
+    def close(self, *args, **kwargs):
+        """
+        Close connection
+
+        :param args:
+        :param kwargs:
+        """
+        self.conn.close(*args, **kwargs)
+
+
+class Model:
+    """:type db: Db"""
+    db = None
+
+    # table name
+    table = ''
+
+    # primary key
+    pk = 'id'
+
+    def __init__(self, *args, **kwargs):
+        """
+        Init Model instance
+
+        :return: Model instance
+        """
+        self._row = args[0] if args else kwargs
+
+    def __getattr__(self, item):
+        """
+        Get field from attr
+
+        :param str item: item
+        :return:
+        """
+        return self._row[item]
+
+    def __getitem__(self, item):
+        """
+        Get field from item
+
+        :param str item: item
+        :return:
+        """
+        return self._row[item]
+
+    @classmethod
+    def to_obj(cls, data):
+        """
+        Mapping table row(s) to class object(s)
+
+        :param list|tuple|dict data: table rows
+        :return: class objects
+        """
+        if data is None:
+            return None
+        elif isinstance(data, dict):
+            return cls(data)
+        else:
+            return [cls(i) for i in data]
+
+    @classmethod
+    def select(cls, expr='*'):
+        """
+        Select clause
+
+        :param list|tuple|str expr: expression
+        :return: Sql instance
+        """
+        return cls.db.select(expr).fr(cls.table)
+
+    @classmethod
+    def get(cls, pks, fetch_obj=True):
+        """
+        Get row(s) by pk(s)
+
+        :param list|tuple|set|str|int pks: primary key(s)
+        :param fetch_obj: default True
+        :return row(s)
+        """
+        if isinstance(pks, (list, tuple, set)):
+            data = cls.select().where((cls.pk, 'IN', pks)).rocks().fetchall()
+        else:
+            data = cls.select().where((cls.pk, pks)).rocks().fetchone()
+
+        return cls.to_obj(data) if fetch_obj else data
+
+    @classmethod
+    def one(cls, expr='*', where=None, order_by=None, fetch_obj=True):
+        """
+        Get one row
+
+        :param str|Sql|list|tuple expr: expression
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param fetch_obj: default True
+        :return row
+        """
+        sql = cls.select(expr).where(where).order_by(order_by).limit(1)
+        row = sql.rocks().fetchone()
+        return cls.to_obj(row) if fetch_obj else row
+
+    @classmethod
+    def first(cls, expr='*', fetch_obj=True):
+        """
+        Get first row
+
+        :param str|Sql|list|tuple expr: expression
+        :param fetch_obj: default True
+        :return row
+        """
+        return cls.one(expr=expr, order_by=cls.pk, fetch_obj=fetch_obj)
+
+    @classmethod
+    def last(cls, expr='*', fetch_obj=True):
+        """
+        Get last row
+
+        :param str|Sql|list|tuple expr: expression
+        :param fetch_obj: default True
+        :return row
+        """
+        return cls.one(expr=expr, order_by='-' + cls.pk, fetch_obj=fetch_obj)
+
+    @classmethod
+    def all(cls, expr='*', where=None, order_by=None, limit=None,
+            fetch_obj=True):
+        """
+        Get rows
+
+        :param str|Sql|list|tuple expr: expression
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param list|tuple|int|str limit: limit
+        :param fetch_obj: default True
+        :return: rows
+        """
+        sql = cls.select(expr).where(where).order_by(order_by)
+
+        if isinstance(limit, (list, tuple)):
+            sql.limit(limit[0], limit[2])
+        else:
+            sql.limit(limit)
+
+        rows = sql.rocks().fetchall()
+
+        return cls.to_obj(rows) if fetch_obj else rows
+
+    @classmethod
+    def add(cls, *args, **kwargs):
+        """
+        Insert clause
+
+        :return: last row id
+        """
+        return cls.db.insert(cls.table, args[0] if args else kwargs)
+
+    @classmethod
+    def saved(cls, data, insert=None):
+        """
+        Save raw data
+
+        :param dict data: data
+        :param bool insert: default None
+        :return: last row id or affected rows
+        """
+        return cls.db.save(cls.table, data, cls.pk, insert)
+
+    def save(self, insert=None):
+        """
+        Save object
+
+        :param bool insert: default None
+        :return: last row id or affected rows
+        """
+        data = self.fields_filter(self.__dict__)
+
+        if self.pk in self._row and not insert:
+            # update
+            data[self.pk] = self._row[self.pk]
+        else:
+            # insert or update
+            data.update(
+                {k: v for k, v in self._row.items() if k not in data}
+            )
+
+        self.db.save(self.table, data, self.pk, insert)
+
+    @classmethod
+    def update(cls, data, where=None, order_by=None, limit=None):
+        """
+        Update clause
+
+        :param dict data: data
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param list|tuple|int|str limit: limit
+        :return: affected rows
+        """
+        return cls.db.update(cls.table, data, where, order_by, limit)
+
+    @classmethod
+    def delete(cls, where, order_by=None, limit=None):
+        """
+        Delete clause
+
+        :param dict|list|tuple|str where: where conditions
+        :param list|tuple|str order_by: order_by
+        :param list|tuple|int|str limit: limit
+        :return: affected rows
+        """
+        return cls.db.delete(cls.table, where, order_by, limit)
+
+    def remove(self):
+        """
+        Delete object
+
+        :return: affected rows
+        """
+        return self.db.delete(self.table, (self.pk, getattr(self, self.pk)))
+
+    @classmethod
+    def get_fields(cls):
+        """
+        Get table fields
+
+        :return: fields
+        :rtype list|tuple|set
+        """
+        return {}
+
+    @classmethod
+    def fields_filter(cls, data):
+        """
+        Remove irrelevant fields
+
+        :param dict data: data
+        :return: clean data
+        """
+        fields = cls.get_fields()
+        return {k: v for k, v in data.items() if k in fields}
+
+    @classmethod
+    def rocks(cls, sql, args=None):
+        """
+        Execute sql
+
+        :param str sql: sql
+        :param Iterable args: args
+        :return:
+        """
+        return cls.db.rocks(sql, args)
