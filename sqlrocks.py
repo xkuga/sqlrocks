@@ -189,6 +189,38 @@ class Sql:
         self.sql += 'INSERT INTO `%s`' % table
         return self
 
+    def cols(self, cols):
+        """
+        Insert columns
+
+        :param list|tuple cols: columns
+        :return: Sql instance
+        """
+        self.sql += '(%s)' % Sql.add_quote(cols)
+        return self
+
+    def vals(self, *args):
+        """
+        Insert values
+
+        :param args: insert values
+        :return: Sql instance
+        """
+        self.sql += ' VALUES'
+
+        values = args if len(args) > 1 else args[0]
+
+        if isinstance(values[0], (list, tuple)):
+            for vals in values:
+                self.sql += '(' + ('%s,' * len(vals))[:-1] + '),'
+                self.args.extend(vals)
+            self.sql = self.sql[0:-1]
+        else:
+            self.sql += '(' + ('%s,' * len(values))[:-1] + ')'
+            self.args.extend(values)
+
+        return self
+
     def update(self, table):
         """
         Update clause
