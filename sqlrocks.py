@@ -681,6 +681,16 @@ class Model:
         return cls.to_obj(rows) if fetch_obj else rows
 
     @classmethod
+    def count(cls, where=None):
+        """
+        Count table
+
+        :param dict|list where: where conditions
+        :return: int
+        """
+        return cls.db.count(cls.table, where)
+
+    @classmethod
     def add(cls, *args, **kwargs):
         """
         Insert clause
