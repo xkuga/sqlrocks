@@ -744,7 +744,7 @@ class Model:
         return cls.db.update(cls.table, data, where, order_by, limit)
 
     @classmethod
-    def delete(cls, where, order_by=None, limit=None):
+    def delete(cls, where=None, order_by=None, limit=None):
         """
         Delete clause
 
