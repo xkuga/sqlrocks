@@ -1,7 +1,7 @@
 sqlrocks
 ========
 
-A rockable SQL builder with a lightweight ORM.
+A rockable SQL builder with a lightweight ORM. \m/
 
 Rock Start
 ----------
@@ -75,6 +75,97 @@ where = [('name', '=', 'Mayday'), ('tag', '=', 'band')] # ok~
 where = [['name', '=', 'Mayday'], ['tag', '=', 'band']] # ok~
 where = (('name', '=', 'Mayday'), ('tag', '=', 'band')) # wrong!
 ```
+
+
+ORM
+===
+
+Create MySQLdb connection and model class:
+
+```python
+import MySQLdb
+
+from sqlrocks import *
+from MySQLdb.cursors import DictCursor
+
+conn = MySQLdb.connect(
+    db='music',
+    host='127.0.0.1',
+    port=3306,
+    user='user',
+    passwd='passwd',
+    charset='utf8',
+    autocommit=True,
+    cursorclass=DictCursor,
+)
+
+# create db instance
+db = Db(conn, conn.cursor())
+
+
+class Singer(Model):
+    table = 'singer'
+    pk = 'id'
+    db = db
+    
+    @classmethod
+    def get_fields(cls):
+        return ['id', 'name', 'tag']
+```
+
+Basic usage:
+
+```python
+>>> Singer.add(name='Mayday')
+1
+>>> Singer(name='instance').save()
+2
+>>> Singer.saved({'name': 'Jay Chou'})
+3
+>>> Singer.count()
+3
+>>> Singer.first().name
+'Mayday'
+>>> Singer.last().name
+'Jay Chou'
+>>> Singer.get(2).name
+'instance'
+>>> Singer.get([1, 3])[0].name
+'Mayday'
+>>> Singer.one(expr=['id', 'name'], where=('id', 3)).name
+'Jay Chou'
+>>> Singer.all(order_by='-id')[0].name
+'Jay Chou'
+>>> Singer.all(order_by='id', limit=1, fetch_obj=False)
+({'name': 'Mayday', 'tag': '', 'id': 1},)
+>>> mayday = Singer.get(1)
+>>> mayday.tag = 'rocks'
+>>> mayday.save()
+1
+>>> Singer.get(1).tag
+'rocks'
+>>> Singer.update({'tag': 'Incomparable'}, where=('name', 'Jay Chou'))
+1
+>>> Singer.get(3).tag
+'Incomparable'
+>>> Singer.saved({'id': 2, 'tag': 'XD'})
+1
+>>> instance = Singer.get(2)
+>>> instance.tag
+'XD'
+>>> instance['tag']
+'XD'
+>>> instance.remove()
+1
+>>> Singer.count()
+2
+>>> Singer.delete()
+2
+>>> Singer.count()
+0
+```
+
+Traversing foreign key does not support. It's not free.
 
 Tests
 -----
