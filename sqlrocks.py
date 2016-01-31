@@ -728,7 +728,7 @@ class Model:
                 {k: v for k, v in self._row.items() if k not in data}
             )
 
-        self.db.save(self.table, data, self.pk, insert)
+        return self.db.save(self.table, data, self.pk, insert)
 
     @classmethod
     def update(cls, data, where=None, order_by=None, limit=None):
