@@ -76,7 +76,6 @@ where = [['name', '=', 'Mayday'], ['tag', '=', 'band']] # ok~
 where = (('name', '=', 'Mayday'), ('tag', '=', 'band')) # wrong!
 ```
 
-
 ORM
 ===
 
@@ -99,9 +98,7 @@ conn = MySQLdb.connect(
     cursorclass=DictCursor,
 )
 
-# create db instance
 db = Db(conn, conn.cursor())
-
 
 class Singer(Model):
     table = 'singer'
