@@ -164,16 +164,21 @@ Basic usage:
 
 Traversing foreign key does not support. It's not free.
 
+Installation
+------------
+
+    $ pip install sqlrocks
+
 Tests
 -----
 
 Install requirements.
 
-    pip install -r requirements.txt
+    $ pip install -r requirements.txt
     
 Running test
 
-    python test_sqlrocks.py
+    $ python test_sqlrocks.py
 
 LICENSE
 -------
