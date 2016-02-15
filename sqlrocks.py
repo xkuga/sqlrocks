@@ -657,6 +657,16 @@ class Model:
         return cls.one(expr=expr, order_by='-' + cls.pk, fetch_obj=fetch_obj)
 
     @classmethod
+    def exists(cls, where):
+        """
+        Exists
+
+        :param dict|list|tuple|str where: where conditions
+        :return: bool
+        """
+        return True if cls.one('*', where, fetch_obj=False) else False
+    
+    @classmethod
     def all(cls, expr='*', where=None, order_by=None, limit=None,
             fetch_obj=True):
         """
