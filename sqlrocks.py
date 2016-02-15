@@ -566,7 +566,10 @@ class Model:
         :param str item: item
         :return:
         """
-        return self._row[item]
+        if item in self._row:
+            return self._row[item]
+        else:
+            raise AttributeError
 
     def __getitem__(self, item):
         """
@@ -575,7 +578,10 @@ class Model:
         :param str item: item
         :return:
         """
-        return self._row[item]
+        if item in self._row:
+            return self._row[item]
+        else:
+            raise AttributeError
 
     @classmethod
     def to_obj(cls, data):
@@ -665,7 +671,7 @@ class Model:
         :return: bool
         """
         return True if cls.one('*', where, fetch_obj=False) else False
-    
+
     @classmethod
     def all(cls, expr='*', where=None, order_by=None, limit=None,
             fetch_obj=True):
