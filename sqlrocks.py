@@ -603,18 +603,19 @@ class Model:
         return cls.db.select(expr).fr(cls.table)
 
     @classmethod
-    def get(cls, pks, fetch_obj=True):
+    def get(cls, pk, expr='*', fetch_obj=True):
         """
         Get row(s) by pk(s)
 
-        :param list|tuple|set|str|int pks: primary key(s)
+        :param list|tuple|set|str|int pk: primary key(s)
+        :param str|Sql|list|tuple expr: expression
         :param fetch_obj: default True
         :return row(s)
         """
-        if isinstance(pks, (list, tuple, set)):
-            data = cls.select().where((cls.pk, 'IN', pks)).rocks().fetchall()
+        if isinstance(pk, (list, tuple, set)):
+            data = cls.select(expr).where((cls.pk, 'IN', pk)).rocks().fetchall()
         else:
-            data = cls.select().where((cls.pk, pks)).rocks().fetchone()
+            data = cls.select(expr).where((cls.pk, pk)).rocks().fetchone()
 
         return cls.to_obj(data) if fetch_obj else data
 
