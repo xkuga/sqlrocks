@@ -485,9 +485,8 @@ class Db:
         if insert or pk not in data:
             return self.insert(table, data)
         else:
-            where = (pk, data[pk])
-            del data[pk]
-            return self.update(table, data, where)
+            sub_data = {k: data[k] for k in data if k != pk}
+            return self.update(table, sub_data, (pk, data[pk]))
 
     def delete(self, table, where=None, order_by=None, limit=None):
         """
@@ -672,7 +671,7 @@ class Model:
         sql = cls.select(expr).where(where).order_by(order_by)
 
         if isinstance(limit, (list, tuple)):
-            sql.limit(limit[0], limit[2])
+            sql.limit(limit[0], limit[1])
         else:
             sql.limit(limit)
 
