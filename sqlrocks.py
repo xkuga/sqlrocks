@@ -72,7 +72,7 @@ class Sql:
         """
         Use index clause
 
-        :param Sql|str|Iterable expr: expression
+        :param str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += ' USE INDEX(' + self.add_quote(expr) + ')'
@@ -82,7 +82,7 @@ class Sql:
         """
         Ignore index clause
 
-        :param Sql|str|Iterable expr: expression
+        :param str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += ' IGNORE INDEX(' + self.add_quote(expr) + ')'
@@ -92,7 +92,7 @@ class Sql:
         """
         From clause
 
-        :param Sql|str|Iterable expr: expression
+        :param str expr: expression
         :return: Sql instance
         """
         self.sql += ' ' + expr
@@ -166,18 +166,19 @@ class Sql:
         """
         Limit clause
 
-        :param int|str a: offset or length
-        :param int|str b: length
+        :param list|tuple|int|str a: a
+        :param int|str b: b
         :return: Sql instance
         """
-        if a is None and b is None:
-            return self
-        elif b is None:
-            self.sql += ' LIMIT %s' % a
-        elif a is None:
-            self.sql += ' LIMIT %s' % b
+        if isinstance(a, (list, tuple)):
+            self.sql += ' LIMIT %s, %s' % (a[0], a[1])
         else:
-            self.sql += ' LIMIT %s, %s' % (a, b)
+            if a is None:
+                pass
+            elif b is None:
+                self.sql += ' LIMIT %s' % a
+            else:
+                self.sql += ' LIMIT %s, %s' % (a, b)
 
         return self
 
@@ -195,7 +196,7 @@ class Sql:
         """
         Insert columns
 
-        :param list|tuple cols: columns
+        :param str|Iterable cols: expression
         :return: Sql instance
         """
         self.sql += '(%s)' % Sql.add_quote(cols)
@@ -252,7 +253,7 @@ class Sql:
         """
         Add alias
 
-        :param name:
+        :param str name: name
         :return: Sql Instance
         """
         self.sql += ' AS `%s`' % name
@@ -276,7 +277,7 @@ class Sql:
         """
         Add quote
 
-        :param str|Iterable expr:
+        :param str|Iterable expr: expression
         :return: string
         """
         if isinstance(expr, str):
@@ -445,7 +446,7 @@ class Db:
         Count table
 
         :param str table: table name
-        :param dict|list where: where conditions
+        :param dict|list|tuple|str where: where conditions
         :return: int
         """
         sql = self.select('COUNT(*)').fr('`%s`' % table)
@@ -469,7 +470,7 @@ class Db:
         :param str table: table name
         :param dict data: data
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param list|tuple|int|str limit: limit
         :return: affected rows
         """
@@ -498,7 +499,7 @@ class Db:
 
         :param str table: table name
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param list|tuple|int|str limit: limit
         :return: affected rows
         """
@@ -636,7 +637,7 @@ class Model:
 
         :param Sql|str|Iterable expr: expression
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param fetch_obj: default True
         :return row
         """
@@ -684,20 +685,13 @@ class Model:
 
         :param Sql|str|Iterable expr: expression
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param list|tuple|int|str limit: limit
         :param fetch_obj: default True
         :return: rows
         """
-        sql = cls.select(expr).where(where).order_by(order_by)
-
-        if isinstance(limit, (list, tuple)):
-            sql.limit(limit[0], limit[1])
-        else:
-            sql.limit(limit)
-
+        sql = cls.select(expr).where(where).order_by(order_by).limit(limit)
         rows = sql.rocks().fetchall()
-
         return cls.to_obj(rows) if fetch_obj else rows
 
     @classmethod
@@ -705,7 +699,7 @@ class Model:
         """
         Count table
 
-        :param dict|list where: where conditions
+        :param dict|list|tuple|str where: where conditions
         :return: int
         """
         return cls.db.count(cls.table, where)
@@ -755,7 +749,7 @@ class Model:
 
         :param dict data: data
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param list|tuple|int|str limit: limit
         :return: affected rows
         """
@@ -767,7 +761,7 @@ class Model:
         Delete clause
 
         :param dict|list|tuple|str where: where conditions
-        :param list|tuple|str order_by: order_by
+        :param str|Iterable order_by: order_by
         :param list|tuple|int|str limit: limit
         :return: affected rows
         """

@@ -598,12 +598,20 @@ limit = [
         'expected': '',
     },
     {
+        'args': [[0, 5]],
+        'expected': ' LIMIT 0, 5',
+    },
+    {
+        'args': [(0, 5)],
+        'expected': ' LIMIT 0, 5',
+    },
+    {
         'args': [5],
         'expected': ' LIMIT 5',
     },
     {
-        'args': [None, 5],
-        'expected': ' LIMIT 5',
+        'args': [0, 5],
+        'expected': ' LIMIT 0, 5',
     },
     {
         'args': [5, 7],
