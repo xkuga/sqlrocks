@@ -166,8 +166,10 @@ class TestSql(unittest.TestCase):
     def test_where_2(self, condition, expected):
         sql = Sql()
         self.assertIsInstance(sql.where(**condition), Sql)
-        self.assertEqual(sql.sql, expected['cond_str'])
-        self.assertEqual(sql.args, expected['cond_args'])
+
+        cols = re.findall(r'`(.+?)`=%s', sql.sql)
+        for i, col in enumerate(cols):
+            self.assertEqual(sql.args[i], condition[col])
 
     @ddt.data(*test_data.sql.group_by)
     @ddt.unpack
@@ -189,8 +191,10 @@ class TestSql(unittest.TestCase):
     def test_having_2(self, condition, expected):
         sql = Sql()
         self.assertIsInstance(sql.having(**condition), Sql)
-        self.assertEqual(sql.sql, expected['cond_str'])
-        self.assertEqual(sql.args, expected['cond_args'])
+
+        cols = re.findall(r'`(.+?)`=%s', sql.sql)
+        for i, col in enumerate(cols):
+            self.assertEqual(sql.args[i], condition[col])
 
     @ddt.data(*test_data.sql.order_by)
     @ddt.unpack
