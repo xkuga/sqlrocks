@@ -227,9 +227,9 @@ class TestSql(unittest.TestCase):
         self.assertIsInstance(sql.set(expr), Sql)
 
         if isinstance(expr, dict):
-            cols = re.findall(r'`(.+?)`=%s', expected['sql'])
+            cols = re.findall(r'`(.+?)`=%s', sql.sql)
             for i, col in enumerate(cols):
-                self.assertEqual(expected['args'][i], expr[col])
+                self.assertEqual(sql.args[i], expr[col])
         else:
             self.assertEqual(sql.sql, expected['sql'])
             self.assertEqual(sql.args, expected['args'])
