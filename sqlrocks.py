@@ -26,7 +26,7 @@ class Sql:
         """
         Select clause
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         expr, args = Sql.parse_expr(expr)
@@ -40,7 +40,7 @@ class Sql:
         """
         Delete clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += 'DELETE'
@@ -56,7 +56,7 @@ class Sql:
         """
         From clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         expr, args = Sql.parse_expr(expr)
@@ -70,7 +70,7 @@ class Sql:
         """
         Use index clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += ' USE INDEX(' + self.add_quote(expr) + ')'
@@ -80,7 +80,7 @@ class Sql:
         """
         Ignore index clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += ' IGNORE INDEX(' + self.add_quote(expr) + ')'
@@ -90,7 +90,7 @@ class Sql:
         """
         From clause
 
-        :param str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         self.sql += ' ' + expr
@@ -118,7 +118,7 @@ class Sql:
         """
         Group by clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         expr, args = Sql.parse_expr(expr)
@@ -150,7 +150,7 @@ class Sql:
         """
         Order by clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         expr, args = Sql.parse_expr(expr)
@@ -286,12 +286,14 @@ class Sql:
         """
         parse expression
 
-        :param Sql|list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: expression string
         """
         if isinstance(expr, Sql):
             return expr.sql, expr.args
-        elif isinstance(expr, (list, tuple)):
+        elif isinstance(expr, str) or expr is None:
+            return expr, []
+        else:
             str_list = []
             arg_list = []
 
@@ -303,8 +305,6 @@ class Sql:
                     str_list.append(i)
 
             return ', '.join(str_list), arg_list
-        else:
-            return expr, []
 
     @staticmethod
     def parse_cond(v):
@@ -431,7 +431,7 @@ class Db:
         """
         Create a Sql instance
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         return self.sql().select(expr)
@@ -603,7 +603,7 @@ class Model:
         """
         Select clause
 
-        :param list|tuple|str expr: expression
+        :param Sql|str|Iterable expr: expression
         :return: Sql instance
         """
         return cls.db.select(expr).fr(cls.table)
@@ -614,7 +614,7 @@ class Model:
         Get row(s) by pk(s)
 
         :param list|tuple|set|str|int pk: primary key(s)
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :param fetch_obj: default True
         :return row(s)
         """
@@ -630,7 +630,7 @@ class Model:
         """
         Get one row
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :param dict|list|tuple|str where: where conditions
         :param list|tuple|str order_by: order_by
         :param fetch_obj: default True
@@ -645,7 +645,7 @@ class Model:
         """
         Get first row
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :param fetch_obj: default True
         :return row
         """
@@ -656,7 +656,7 @@ class Model:
         """
         Get last row
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :param fetch_obj: default True
         :return row
         """
@@ -678,7 +678,7 @@ class Model:
         """
         Get rows
 
-        :param str|Sql|list|tuple expr: expression
+        :param Sql|str|Iterable expr: expression
         :param dict|list|tuple|str where: where conditions
         :param list|tuple|str order_by: order_by
         :param list|tuple|int|str limit: limit
@@ -737,14 +737,12 @@ class Model:
 
         if self.pk in self._row and not insert:
             # update
-            data[self.pk] = self._row[self.pk]
+            where = (self.pk, self._row[self.pk])
+            return self.db.update(self.table, data, where)
         else:
             # insert or update
-            data.update(
-                {k: v for k, v in self._row.items() if k not in data}
-            )
-
-        return self.db.save(self.table, data, self.pk, insert)
+            data.update({k: self._row[k] for k in self._row if k not in data})
+            return self.db.save(self.table, data, self.pk, insert)
 
     @classmethod
     def update(cls, data, where=None, order_by=None, limit=None):
@@ -798,7 +796,7 @@ class Model:
         :return: clean data
         """
         fields = cls.get_fields()
-        return {k: v for k, v in data.items() if k in fields}
+        return {k: data[k] for k in data if k in fields}
 
     @classmethod
     def rocks(cls, sql, args=None):
