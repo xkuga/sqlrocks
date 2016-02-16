@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from collections import Iterable
+
 
 class Sql:
     def __init__(self, sql='', args=None, db=None):
@@ -274,12 +276,12 @@ class Sql:
         """
         Add quote
 
-        :param list|tuple|str expr:
+        :param str|Iterable expr:
         :return: string
         """
-        if isinstance(expr, (list, tuple)):
-            return '`' + '`, `'.join(expr) + '`'
-        return '`' + expr + '`'
+        if isinstance(expr, str):
+            return '`' + expr + '`'
+        return '`' + '`, `'.join(expr) + '`'
 
     @staticmethod
     def parse_expr(expr):
@@ -312,7 +314,7 @@ class Sql:
         parse condition
 
         :param list|tuple v: condition details
-        :return: condition string
+        :return: condition string and argument
         """
         cond_len = len(v)
 
@@ -364,7 +366,9 @@ class Sql:
                 cond_str_list.append(cond_str)
 
                 if cond_arg is not None:
-                    if isinstance(cond_arg, (list, tuple, set)):
+                    if isinstance(cond_arg, str):
+                        cond_arg_list.append(cond_arg)
+                    elif isinstance(cond_arg, Iterable):
                         cond_arg_list.extend(cond_arg)
                     else:
                         cond_arg_list.append(cond_arg)
@@ -613,12 +617,12 @@ class Model:
         """
         Get row(s) by pk(s)
 
-        :param list|tuple|set|str|int pk: primary key(s)
+        :param int|str|Iterable pk: primary key(s)
         :param Sql|str|Iterable expr: expression
         :param fetch_obj: default True
         :return row(s)
         """
-        if isinstance(pk, (list, tuple, set)):
+        if isinstance(pk, Iterable) and not isinstance(pk, str):
             data = cls.select(expr).where((cls.pk, 'IN', pk)).rocks().fetchall()
         else:
             data = cls.select(expr).where((cls.pk, pk)).rocks().fetchone()
