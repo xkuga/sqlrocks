@@ -172,11 +172,17 @@ Installation
 Tests
 -----
 
-Install requirements.
+Install requirements:
 
     $ pip install -r requirements.txt
+
+Init database:
+
+    mysql> create database sqlrocks charset utf8;
+    mysql> use sqlrocks;
+    mysql> source test_data/sqlrocks.sql;
     
-Running test
+Running test:
 
     $ python test_sqlrocks.py
 
