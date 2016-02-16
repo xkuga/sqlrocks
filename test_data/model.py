@@ -1,6 +1,21 @@
 # -*- coding: utf-8 -*-
 
-from config import *
+from test_data.config import *
+
+to_obj = [
+    {
+        'data': None,
+    },
+    {
+        'data': {'id': 1, 'name': 'Common Jasmin Orange'},
+    },
+    {
+        'data': [
+            {'id': 1, 'name': 'Common Jasmin Orange'},
+            {'id': 2, 'name': 'Hair Like Snow'},
+        ]
+    },
+]
 
 select = [
     {
@@ -80,6 +95,30 @@ one = [
     },
 ]
 
+first = [
+    {
+        'expected': {
+            'id': 1,
+            'name': 'Common Jasmin Orange',
+            'singer': 'Jay Chou',
+            'tag': 'Incomparable',
+            'is_published': 1,
+        },
+    }
+]
+
+last = [
+    {
+        'expected': {
+            'id': 5,
+            'name': 'You are Not Truly Happy',
+            'singer': 'Mayday',
+            'tag': '11752233',
+            'is_published': 1,
+        },
+    }
+]
+
 exists = [
     {
         'where': 'id=0',
@@ -137,56 +176,6 @@ all = [
     },
 ]
 
-add = [
-    {
-        'data': {'singer': 'Jay Chou'},
-    },
-    {
-        'data': {'singer': 'Mayday'},
-    },
-]
-
-update = [
-    {
-        'data': {'singer': 'Jay Chou'},
-        'where': ('id', 3),
-    },
-    {
-        'data': {'singer': 'Mayday', 'tag': 'band'},
-        'where': ('id', 3),
-    },
-]
-
-saved = [
-    {
-        'data': {'singer': 'Jay Chou'},
-        'insert': True,
-    },
-    {
-        'data': {'id': 5, 'singer': 'Mayday', 'tag': 'band'},
-        'insert': False,
-    },
-]
-
-delete = [
-    {
-        'where': ('id', 1),
-        'affected_rows': 1,
-    },
-    {
-        'where': ('singer', 'LIKE', '%ay%'),
-        'affected_rows': 4,
-    },
-    {
-        'where': None,
-        'affected_rows': 5,
-    },
-    {
-        'where': ('id', 0),
-        'affected_rows': 0,
-    },
-]
-
 count = [
     {
         'where': None,
@@ -207,5 +196,70 @@ count = [
     {
         'where': ('singer', 'IN', ('Jay Chou', 'Mayday')),
         'expected': 3,
+    },
+]
+
+add = [
+    {
+        'data': {'singer': 'Jay Chou'},
+    },
+    {
+        'data': {'singer': 'Mayday'},
+    },
+]
+
+saved = [
+    {
+        'data': {'singer': 'Jay Chou'},
+        'insert': True,
+    },
+    {
+        'data': {'id': 5, 'singer': 'Mayday', 'tag': 'band'},
+        'insert': False,
+    },
+]
+
+save = [
+    {
+        'data': {'singer': 'Jay Chou'},
+        'insert': True,
+    },
+    {
+        'data': {'id': 86, 'singer': 'kuga'},
+        'insert': True,
+    },
+    {
+        'data': {'id': 5},
+        'modified': {'tag': 'rocks'}
+    },
+]
+
+update = [
+    {
+        'data': {'singer': 'Jay Chou'},
+        'where': ('id', 3),
+    },
+    {
+        'data': {'singer': 'Mayday', 'tag': 'band'},
+        'where': ('id', 3),
+    },
+]
+
+delete = [
+    {
+        'where': ('id', 1),
+        'affected_rows': 1,
+    },
+    {
+        'where': ('singer', 'LIKE', '%ay%'),
+        'affected_rows': 4,
+    },
+    {
+        'where': None,
+        'affected_rows': 5,
+    },
+    {
+        'where': ('id', 0),
+        'affected_rows': 0,
     },
 ]

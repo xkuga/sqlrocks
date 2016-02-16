@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from config import *
+from test_data.config import *
 
 count = [
     {

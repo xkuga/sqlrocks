@@ -382,6 +382,22 @@ class TestDb(DbTestCase):
 
 @ddt.ddt
 class TestModel(DbTestCase):
+    @ddt.data(*test_data.model.to_obj)
+    @ddt.unpack
+    def test_to_obj(self, data):
+        model = self.get_test_model()
+        obj = model.to_obj(data)
+
+        if data is None:
+            self.assertEqual(obj, data)
+        elif isinstance(data, dict):
+            self.assertIsInstance(obj, model)
+            self.assertEqual(obj._row, data)
+        else:
+            for i in range(len(data)):
+                self.assertIsInstance(obj[i], model)
+                self.assertEqual(obj[i]._row, data[i])
+
     @ddt.data(*test_data.model.select)
     @ddt.unpack
     def test_select(self, expr, expected):
@@ -412,6 +428,26 @@ class TestModel(DbTestCase):
         finally:
             model.db.close()
 
+    @ddt.data(*test_data.model.first)
+    @ddt.unpack
+    def test_first(self, expected):
+        model = self.get_test_model()
+
+        try:
+            self.assertEqual(model.first(fetch_obj=False), expected)
+        finally:
+            model.db.close()
+
+    @ddt.data(*test_data.model.last)
+    @ddt.unpack
+    def test_last(self, expected):
+        model = self.get_test_model()
+
+        try:
+            self.assertEqual(model.last(fetch_obj=False), expected)
+        finally:
+            model.db.close()
+
     @ddt.data(*test_data.model.exists)
     @ddt.unpack
     def test_exists(self, where, expected):
@@ -433,6 +469,16 @@ class TestModel(DbTestCase):
         finally:
             model.db.close()
 
+    @ddt.data(*test_data.model.count)
+    @ddt.unpack
+    def test_count(self, where, expected):
+        model = self.get_test_model()
+
+        try:
+            self.assertEqual(model.count(where), expected)
+        finally:
+            model.db.close()
+
     @ddt.data(*test_data.model.add)
     @ddt.unpack
     def test_add(self, data):
@@ -441,21 +487,6 @@ class TestModel(DbTestCase):
         try:
             pk = model.add(data)
             actual = model.get(pk, data.keys(), fetch_obj=False)
-            self.assertEqual(actual, data)
-        finally:
-            model.db.close()
-
-    @ddt.data(*test_data.model.update)
-    @ddt.unpack
-    def test_update(self, data, where):
-        model = self.get_test_model()
-
-        try:
-            affected_rows = model.update(data, where)
-
-            self.assertEqual(affected_rows, 1)
-
-            actual = model.one(data.keys(), where, fetch_obj=False)
             self.assertEqual(actual, data)
         finally:
             model.db.close()
@@ -479,6 +510,45 @@ class TestModel(DbTestCase):
         finally:
             model.db.close()
 
+    @ddt.data(*test_data.model.save)
+    @ddt.unpack
+    def test_save(self, data, insert=None, modified=None):
+        model = self.get_test_model()
+        obj = model(data)
+
+        try:
+            if modified:
+                for k, v in modified.items():
+                    setattr(obj, k, v)
+
+            r = obj.save(insert)
+
+            if insert or model.pk not in data:
+                pk = r
+            else:
+                self.assertEqual(r, 1)
+                pk = data[model.pk]
+
+            actual = model.get(pk, data.keys(), fetch_obj=False)
+            self.assertEqual(actual, data)
+        finally:
+            model.db.close()
+
+    @ddt.data(*test_data.model.update)
+    @ddt.unpack
+    def test_update(self, data, where):
+        model = self.get_test_model()
+
+        try:
+            affected_rows = model.update(data, where)
+
+            self.assertEqual(affected_rows, 1)
+
+            actual = model.one(data.keys(), where, fetch_obj=False)
+            self.assertEqual(actual, data)
+        finally:
+            model.db.close()
+
     @ddt.data(*test_data.model.delete)
     @ddt.unpack
     def test_delete(self, where, affected_rows):
@@ -492,16 +562,6 @@ class TestModel(DbTestCase):
         finally:
             model.db.close()
 
-    @ddt.data(*test_data.model.count)
-    @ddt.unpack
-    def test_count(self, where, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.count(where), expected)
-        finally:
-            model.db.close()
-
     def get_test_model(self):
         class Song(Model):
             table = 'song'
@@ -510,7 +570,7 @@ class TestModel(DbTestCase):
 
             @classmethod
             def get_fields(cls):
-                return {'id', 'name', 'singer' 'tag', 'is_published'}
+                return {'id', 'name', 'singer', 'tag', 'is_published'}
 
         return Song
 
