@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
+
 from sqlrocks import *
 
 add_quote = [
@@ -512,15 +514,21 @@ where_2 = [
     {
         'condition': {'id': 1},
         'expected': {
-            'cond_str': ' WHERE (id = %s)',
-            'cond_args': [1],
+            'cond_str_set': {' WHERE (id = %s)'},
+            'cond_args_set': {json.dumps([1])},
         }
     },
     {
         'condition': {'id': 1, 'name': 'Mayday'},
         'expected': {
-            'cond_str': ' WHERE (id = %s AND name = %s)',
-            'cond_args': [1, 'Mayday'],
+            'cond_str_set': {
+                ' WHERE (id = %s AND name = %s)',
+                ' WHERE (name = %s AND id = %s)',
+            },
+            'cond_args_set': {
+                json.dumps([1, 'Mayday']),
+                json.dumps(['Mayday', 1]),
+            },
         }
     },
 ]
@@ -564,15 +572,21 @@ having_2 = [
     {
         'condition': {'id': 1},
         'expected': {
-            'cond_str': ' HAVING (id = %s)',
-            'cond_args': [1],
+            'cond_str_set': {' HAVING (id = %s)'},
+            'cond_args_set': {json.dumps([1])},
         }
     },
     {
         'condition': {'id': 1, 'name': 'Mayday'},
         'expected': {
-            'cond_str': ' HAVING (id = %s AND name = %s)',
-            'cond_args': [1, 'Mayday'],
+            'cond_str_set': {
+                ' HAVING (id = %s AND name = %s)',
+                ' HAVING (name = %s AND id = %s)',
+            },
+            'cond_args_set': {
+                json.dumps([1, 'Mayday']),
+                json.dumps(['Mayday', 1]),
+            },
         }
     },
 ]
@@ -637,22 +651,21 @@ sql_set = [
     {
         'expr': {'name': 'Jay Chou'},
         'expected': {
-            'sql': ' SET `name`=%s',
-            'args': ['Jay Chou'],
+            'sql_set': {' SET `name`=%s'},
+            'args_set': {json.dumps(['Jay Chou'])},
         }
     },
     {
         'expr': {'name': 'Mayday', 'tag': 'band'},
         'expected': {
-            'sql': ' SET `name`=%s, `tag`=%s',
-            'args': ['Mayday', 'band'],
-        }
-    },
-    {
-        'expr': {'id': 5, 'name': 'Mayday', 'tag': 'band'},
-        'expected': {
-            'sql': ' SET `tag`=%s, `name`=%s, `id`=%s',
-            'args': ['band', 'Mayday', 5],
+            'sql_set': {
+                ' SET `name`=%s, `tag`=%s',
+                ' SET `tag`=%s, `name`=%s',
+            },
+            'args_set': {
+                json.dumps(['Mayday', 'band']),
+                json.dumps(['band', 'Mayday']),
+            }
         }
     },
     {

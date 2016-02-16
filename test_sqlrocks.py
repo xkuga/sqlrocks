@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import re
 import ddt
+import json
 import MySQLdb
 import unittest
 
@@ -166,10 +166,8 @@ class TestSql(unittest.TestCase):
     def test_where_2(self, condition, expected):
         sql = Sql()
         self.assertIsInstance(sql.where(**condition), Sql)
-
-        cols = re.findall(r'`(.+?)`=%s', sql.sql)
-        for i, col in enumerate(cols):
-            self.assertEqual(sql.args[i], condition[col])
+        self.assertIn(sql.sql, expected['cond_str_set'])
+        self.assertIn(json.dumps(sql.args), expected['cond_args_set'])
 
     @ddt.data(*test_data.sql.group_by)
     @ddt.unpack
@@ -191,10 +189,8 @@ class TestSql(unittest.TestCase):
     def test_having_2(self, condition, expected):
         sql = Sql()
         self.assertIsInstance(sql.having(**condition), Sql)
-
-        cols = re.findall(r'`(.+?)`=%s', sql.sql)
-        for i, col in enumerate(cols):
-            self.assertEqual(sql.args[i], condition[col])
+        self.assertIn(sql.sql, expected['cond_str_set'])
+        self.assertIn(json.dumps(sql.args), expected['cond_args_set'])
 
     @ddt.data(*test_data.sql.order_by)
     @ddt.unpack
@@ -231,9 +227,8 @@ class TestSql(unittest.TestCase):
         self.assertIsInstance(sql.set(expr), Sql)
 
         if isinstance(expr, dict):
-            cols = re.findall(r'`(.+?)`=%s', sql.sql)
-            for i, col in enumerate(cols):
-                self.assertEqual(sql.args[i], expr[col])
+            self.assertIn(sql.sql, expected['sql_set'])
+            self.assertIn(json.dumps(sql.args), expected['args_set'])
         else:
             self.assertEqual(sql.sql, expected['sql'])
             self.assertEqual(sql.args, expected['args'])
