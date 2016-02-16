@@ -561,6 +561,19 @@ class TestModel(DbTestCase):
         finally:
             model.db.close()
 
+    @ddt.data(*test_data.model.remove)
+    @ddt.unpack
+    def test_remove(self, id):
+        model = self.get_test_model()
+
+        try:
+            all = model.count()
+            obj = model.get(id)
+            self.assertEqual(obj.remove(), 1)
+            self.assertEqual(model.count(), all - 1)
+        finally:
+            model.db.close()
+
     def get_test_model(self):
         class Song(Model):
             table = 'song'

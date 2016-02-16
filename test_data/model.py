@@ -263,3 +263,9 @@ delete = [
         'affected_rows': 0,
     },
 ]
+
+remove = [
+    {
+        'id': 4,
+    },
+]
