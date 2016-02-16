@@ -567,10 +567,10 @@ class TestModel(DbTestCase):
         model = self.get_test_model()
 
         try:
-            all = model.count()
+            total = model.count()
             obj = model.get(pk)
             self.assertEqual(obj.remove(), 1)
-            self.assertEqual(model.count(), all - 1)
+            self.assertEqual(model.count(), total - 1)
         finally:
             model.db.close()
 
