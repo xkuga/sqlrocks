@@ -266,6 +266,6 @@ delete = [
 
 remove = [
     {
-        'id': 4,
+        'pk': 4,
     },
 ]

@@ -563,12 +563,12 @@ class TestModel(DbTestCase):
 
     @ddt.data(*test_data.model.remove)
     @ddt.unpack
-    def test_remove(self, id):
+    def test_remove(self, pk):
         model = self.get_test_model()
 
         try:
             all = model.count()
-            obj = model.get(id)
+            obj = model.get(pk)
             self.assertEqual(obj.remove(), 1)
             self.assertEqual(model.count(), all - 1)
         finally:
