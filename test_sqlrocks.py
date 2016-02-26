@@ -19,12 +19,20 @@ class DbTestCase(unittest.TestCase):
     dataset = {}
 
     def setUp(self):
-        self.create_dataset(self.get_conn(), self.get_dataset())
+        self.conn = self.new_conn()
 
-    def create_dataset(self, conn, dataset):
-        if conn and dataset:
-            cur = conn.cursor()
+        if self.conn:
+            self.cur = self.conn.cursor()
+            self.create_dataset(self.conn, self.cur, self.get_dataset())
 
+    def tearDown(self):
+        if self.conn:
+            self.delete_dataset(self.conn, self.cur, self.get_dataset())
+            self.conn.close()
+
+    @staticmethod
+    def create_dataset(conn, cur, dataset):
+        if conn and cur and dataset:
             for table, rows in dataset.items():
                 for row in rows:
                     keys = row.keys()
@@ -39,14 +47,14 @@ class DbTestCase(unittest.TestCase):
 
             conn.commit()
 
-    def delete_dataset(self, conn, dataset):
-        if conn and dataset:
+    @staticmethod
+    def delete_dataset(conn, cur, dataset):
+        if conn and cur and dataset:
             for table in dataset:
-                self.clear_table(conn, table)
+                DbTestCase.clear_table(conn, cur, table)
 
-    def clear_table(self, conn, table):
-        cur = conn.cursor()
-
+    @staticmethod
+    def clear_table(conn, cur, table):
         cur.execute("TRUNCATE `%s`" % table)
         # cur.execute("DELETE FROM " + table)
         # cur.execute("ALTER TABLE " + table + " AUTO_INCREMENT = 1")
@@ -57,14 +65,14 @@ class DbTestCase(unittest.TestCase):
 
     def get_conn(self):
         if self.conn is None:
-            self.conn = self.create_conn()
+            self.conn = self.new_conn()
             if self.conn:
                 self.cur = self.conn.cursor()
         return self.conn
 
     def get_cur(self):
         if self.cur is None:
-            self.conn = self.create_conn()
+            self.conn = self.new_conn()
             if self.conn:
                 self.cur = self.conn.cursor()
         return self.cur
@@ -72,11 +80,8 @@ class DbTestCase(unittest.TestCase):
     def get_dataset(self):
         return self.dataset
 
-    def create_conn(self):
+    def new_conn(self):
         return self.conn
-
-    def tearDown(self):
-        self.delete_dataset(self.get_conn(), self.get_dataset())
 
 
 @ddt.ddt
@@ -267,141 +272,121 @@ class TestSql(unittest.TestCase):
 
 @ddt.ddt
 class TestDb(DbTestCase):
+    db = None
+    table = 'song'
+
+    def setUp(self):
+        self.db = self.new_test_db()
+        self.conn = self.new_conn()
+        self.cur = self.conn.cursor()
+
+    def tearDown(self):
+        self.db.close()
+        self.clear_table(self.conn, self.cur, self.table)
+        self.conn.close()
+
     @ddt.data(*test_data.db.count)
     @ddt.unpack
-    def test_count(self, dataset, table, where, expected):
-        db = self.get_test_db()
-
-        try:
-            self.create_dataset(self.conn, dataset)
-            self.assertEqual(db.count(table, where), expected)
-        finally:
-            db.close()
-            self.clear_table(self.conn, table)
+    def test_count(self, dataset, where, expected):
+        self.create_dataset(self.conn, self.cur, dataset)
+        self.assertEqual(self.db.count(self.table, where), expected)
 
     @ddt.data(*test_data.db.insert)
     @ddt.unpack
-    def test_insert(self, table, data):
-        db = self.get_test_db()
+    def test_insert(self, data):
+        self.assertEqual(self.db.count(self.table), 0)
 
-        try:
-            self.assertEqual(db.count(table), 0)
+        insert_id = self.db.insert(self.table, data)
+        self.db.commit()
 
-            insert_id = db.insert(table, data)
-            db.commit()
+        self.assertEqual(self.db.count(self.table), 1)
 
-            self.assertEqual(db.count(table), 1)
-
-            sql = "SELECT * FROM `%s` WHERE `id`='%s'" % (table, insert_id)
-            self.cur.execute(sql)
-            actual = self.cur.fetchone()
-
-            for key in data:
-                self.assertEqual(actual[key], data[key])
-        finally:
-            db.close()
-            self.clear_table(self.conn, table)
+        sql = Sql().select(data.keys()).fr(self.table).where(id=insert_id)
+        self.cur.execute(sql.val, sql.args)
+        self.assertEqual(self.cur.fetchone(), data)
 
     @ddt.data(*test_data.db.update)
     @ddt.unpack
-    def test_update(self, dataset, table, data, where):
-        db = self.get_test_db()
+    def test_update(self, dataset, data, where):
+        self.create_dataset(self.conn, self.cur, dataset)
 
-        try:
-            self.create_dataset(self.conn, dataset)
+        affected_rows = self.db.update(self.table, data, where)
+        self.db.commit()
 
-            affected_rows = db.update(table, data, where)
-            db.commit()
+        self.assertEqual(affected_rows, 1)
 
-            self.assertEqual(affected_rows, 1)
-
-            cond_str, cond_args = Sql.parse_where_cond(where)
-            sql = "SELECT * FROM `%s` WHERE %s" % (table, cond_str)
-            self.cur.execute(sql, cond_args)
-            actual = self.cur.fetchone()
-
-            for key in data:
-                self.assertEqual(actual[key], data[key])
-        finally:
-            db.close()
-            self.clear_table(self.conn, table)
+        sql = Sql().select(data.keys()).fr(self.table).where(where)
+        self.cur.execute(sql.val, sql.args)
+        self.assertEqual(self.cur.fetchone(), data)
 
     @ddt.data(*test_data.db.save)
     @ddt.unpack
-    def test_save(self, dataset, table, data, pk, insert):
-        db = self.get_test_db()
+    def test_save(self, dataset, data, pk, insert):
+        self.create_dataset(self.conn, self.cur, dataset)
 
-        try:
-            self.create_dataset(self.conn, dataset)
+        result = self.db.save(self.table, data, pk)
+        self.db.commit()
 
-            result = db.save(table, data, pk)
-            db.commit()
+        self.assertEqual(result, 1)
+        pk_val = result if insert else data[pk]
 
-            if insert:
-                self.assertEqual(result, 1)
-                pk_val = result
-            else:
-                self.assertEqual(result, 1)
-                pk_val = data[pk]
-
-            sql = "SELECT * FROM `%s` WHERE `%s`='%s'" % (table, pk, pk_val)
-            self.cur.execute(sql)
-            actual = self.cur.fetchone()
-
-            for key in data:
-                self.assertEqual(actual[key], data[key])
-        finally:
-            db.close()
-            self.clear_table(self.conn, table)
+        sql = Sql().select(data.keys()).fr(self.table).where(id=pk_val)
+        self.cur.execute(sql.val, sql.args)
+        self.assertEqual(self.cur.fetchone(), data)
 
     @ddt.data(*test_data.db.delete)
     @ddt.unpack
-    def test_delete(self, dataset, table, where, affected_rows):
-        db = self.get_test_db()
+    def test_delete(self, dataset, where, affected_rows):
+        self.create_dataset(self.conn, self.cur, dataset)
+        self.assertEqual(self.db.count(self.table), len(dataset[self.table]))
 
-        try:
-            self.create_dataset(self.conn, dataset)
-            self.assertEqual(db.count(table), len(dataset[table]))
+        count = self.db.delete(self.table, where)
 
-            count = db.delete(table, where)
+        self.assertEqual(count, affected_rows)
+        self.assertEqual(self.db.count(self.table), 0)
 
-            self.assertEqual(count, affected_rows)
-            self.assertEqual(db.count(table), 0)
-        finally:
-            db.close()
-            self.clear_table(self.conn, table)
-
-    def get_test_db(self):
+    def new_test_db(self):
         conn = MySQLdb.connect(**config.db)
         return Db(conn, conn.cursor())
 
-    def create_conn(self):
+    def new_conn(self):
         return MySQLdb.connect(**config.db)
 
 
 @ddt.ddt
 class TestModel(DbTestCase):
+    db = None
+    model = None
+    table = 'song'
+    pk = 'id'
+
+    def setUp(self):
+        self.model = self.new_test_model()
+        super(TestModel, self).setUp()
+
+    def tearDown(self):
+        self.model.db.close()
+        super(TestModel, self).tearDown()
+
     @ddt.data(*test_data.model.to_obj)
     @ddt.unpack
     def test_to_obj(self, data):
-        model = self.get_test_model()
-        obj = model.to_obj(data)
+        obj = self.model.to_obj(data)
 
         if data is None:
             self.assertEqual(obj, data)
         elif isinstance(data, dict):
-            self.assertIsInstance(obj, model)
+            self.assertIsInstance(obj, self.model)
             self.assertEqual(obj._row, data)
         else:
             for i in range(len(data)):
-                self.assertIsInstance(obj[i], model)
+                self.assertIsInstance(obj[i], self.model)
                 self.assertEqual(obj[i]._row, data[i])
 
     @ddt.data(*test_data.model.select)
     @ddt.unpack
     def test_select(self, expr, expected):
-        model = self.get_test_model()
-        q = model.select(expr)
+        q = self.model.select(expr)
 
         self.assertIsInstance(q, Sql)
         self.assertEqual(q.sql, expected)
@@ -409,176 +394,112 @@ class TestModel(DbTestCase):
     @ddt.data(*test_data.model.get)
     @ddt.unpack
     def test_get(self, pk, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.get(pk, fetch_obj=False), expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.get(pk, fetch_obj=False), expected)
 
     @ddt.data(*test_data.model.one)
     @ddt.unpack
     def test_one(self, expr, where, expected):
-        model = self.get_test_model()
-
-        try:
-            actual = model.one(expr, where, fetch_obj=False)
-            self.assertEqual(actual, expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.one(expr, where, fetch_obj=False), expected)
 
     @ddt.data(*test_data.model.first)
     @ddt.unpack
     def test_first(self, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.first(fetch_obj=False), expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.first(fetch_obj=False), expected)
 
     @ddt.data(*test_data.model.last)
     @ddt.unpack
     def test_last(self, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.last(fetch_obj=False), expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.last(fetch_obj=False), expected)
 
     @ddt.data(*test_data.model.exists)
     @ddt.unpack
     def test_exists(self, where, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.exists(where), expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.exists(where), expected)
 
     @ddt.data(*test_data.model.all)
     @ddt.unpack
     def test_all(self, expr, where, order_by, limit, expected):
-        model = self.get_test_model()
-
-        try:
-            actual = model.all(expr, where, order_by, limit, fetch_obj=False)
-            self.assertEqual(actual, expected)
-        finally:
-            model.db.close()
+        actual = self.model.all(expr, where, order_by, limit, fetch_obj=False)
+        self.assertEqual(actual, expected)
 
     @ddt.data(*test_data.model.count)
     @ddt.unpack
     def test_count(self, where, expected):
-        model = self.get_test_model()
-
-        try:
-            self.assertEqual(model.count(where), expected)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.count(where), expected)
 
     @ddt.data(*test_data.model.add)
     @ddt.unpack
     def test_add(self, data):
-        model = self.get_test_model()
-
-        try:
-            pk = model.add(data)
-            actual = model.get(pk, data.keys(), fetch_obj=False)
-            self.assertEqual(actual, data)
-        finally:
-            model.db.close()
+        pk = self.model.add(data)
+        actual = self.model.get(pk, data.keys(), fetch_obj=False)
+        self.assertEqual(actual, data)
 
     @ddt.data(*test_data.model.saved)
     @ddt.unpack
     def test_saved(self, data, insert):
-        model = self.get_test_model()
+        r = self.model.saved(data)
 
-        try:
-            r = model.saved(data)
+        if insert:
+            pk = r
+        else:
+            self.assertEqual(r, 1)
+            pk = data[self.model.pk]
 
-            if insert:
-                pk = r
-            else:
-                self.assertEqual(r, 1)
-                pk = data[model.pk]
-
-            actual = model.get(pk, data.keys(), fetch_obj=False)
-            self.assertEqual(actual, data)
-        finally:
-            model.db.close()
+        actual = self.model.get(pk, data.keys(), fetch_obj=False)
+        self.assertEqual(actual, data)
 
     @ddt.data(*test_data.model.save)
     @ddt.unpack
     def test_save(self, data, insert=None, modified=None):
-        model = self.get_test_model()
-        obj = model(data)
+        obj = self.model(data)
 
-        try:
-            if modified:
-                for k, v in modified.items():
-                    setattr(obj, k, v)
+        if modified:
+            for k, v in modified.items():
+                setattr(obj, k, v)
 
-            r = obj.save(insert)
+        r = obj.save(insert)
 
-            if insert or model.pk not in data:
-                pk = r
-            else:
-                self.assertEqual(r, 1)
-                pk = data[model.pk]
+        if insert or self.model.pk not in data:
+            pk = r
+        else:
+            self.assertEqual(r, 1)
+            pk = data[self.model.pk]
 
-            actual = model.get(pk, data.keys(), fetch_obj=False)
-            self.assertEqual(actual, data)
-        finally:
-            model.db.close()
+        actual = self.model.get(pk, data.keys(), fetch_obj=False)
+        self.assertEqual(actual, data)
 
     @ddt.data(*test_data.model.update)
     @ddt.unpack
     def test_update(self, data, where):
-        model = self.get_test_model()
+        affected_rows = self.model.update(data, where)
+        self.assertEqual(affected_rows, 1)
 
-        try:
-            affected_rows = model.update(data, where)
-
-            self.assertEqual(affected_rows, 1)
-
-            actual = model.one(data.keys(), where, fetch_obj=False)
-            self.assertEqual(actual, data)
-        finally:
-            model.db.close()
+        actual = self.model.one(data.keys(), where, fetch_obj=False)
+        self.assertEqual(actual, data)
 
     @ddt.data(*test_data.model.delete)
     @ddt.unpack
     def test_delete(self, where, affected_rows):
-        model = self.get_test_model()
+        table_count = len(config.dataset[config.table_song])
 
-        try:
-            table_count = len(config.dataset[config.table_song])
-            self.assertEqual(model.count(), table_count)
-            self.assertEqual(model.delete(where), affected_rows)
-            self.assertEqual(model.count(), table_count - affected_rows)
-        finally:
-            model.db.close()
+        self.assertEqual(self.model.count(), table_count)
+        self.assertEqual(self.model.delete(where), affected_rows)
+        self.assertEqual(self.model.count(), table_count - affected_rows)
 
     @ddt.data(*test_data.model.remove)
     @ddt.unpack
     def test_remove(self, pk):
-        model = self.get_test_model()
+        total = self.model.count()
+        obj = self.model.get(pk)
 
-        try:
-            total = model.count()
-            obj = model.get(pk)
-            self.assertEqual(obj.remove(), 1)
-            self.assertEqual(model.count(), total - 1)
-        finally:
-            model.db.close()
+        self.assertEqual(obj.remove(), 1)
+        self.assertEqual(self.model.count(), total - 1)
 
-    def get_test_model(self):
+    def new_test_model(self):
         class Song(Model):
-            table = 'song'
-            pk = 'id'
-            db = self.get_test_db()
+            table = self.table
+            pk = self.pk
+            db = self.new_test_db()
 
             @classmethod
             def get_fields(cls):
@@ -586,11 +507,11 @@ class TestModel(DbTestCase):
 
         return Song
 
-    def get_test_db(self):
+    def new_test_db(self):
         conn = MySQLdb.connect(**config.db)
         return Db(conn, conn.cursor())
 
-    def create_conn(self):
+    def new_conn(self):
         return MySQLdb.connect(**config.db)
 
     def get_dataset(self):
