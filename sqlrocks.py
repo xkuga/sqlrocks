@@ -386,7 +386,7 @@ class Sql:
         :param dict|list|tuple|str where_cond: where conditions
         :return: condition string
         """
-        if where_cond is None:
+        if not where_cond:
             return '', None
         elif isinstance(where_cond, str):
             return where_cond, None
